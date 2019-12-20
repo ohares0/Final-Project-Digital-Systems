@@ -1,0 +1,53 @@
+module Lab7b (BUTTON, CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX2_DP);
+	input[2:0] BUTTON;
+	input CLOCK_50;
+	output[6:0] HEX0, HEX1, HEX2, HEX3;
+	output HEX2_DP;
+	
+	wire clock, enabled0, enabled1, enabled2, enabled3;
+	wire [3:0]t0, t1, t2, t3, dt0, dt1, dt2, dt3, st0, st1, st2, st3;
+	wire [6:0]dig0,dig1,dig2,dig3;
+	wire [1:0]state;
+	wire selectDisplay;
+	
+	ClockDividerSec c (CLOCK_50, clock);
+	
+	TimerState state1 (~BUTTON[2], clock, ~BUTTON[1], ~BUTTON[0], state);
+	
+	EnabledTimer enabled (~BUTTON[2], clock, ~BUTTON[1], ~BUTTON[0], enabled0);
+	
+	BCDCounter time0 (enabled0, ~state[1] & ~state[0], state[1] & ~state[0], clock, t0);
+	and inst1 (enabled1, enabled0, t0[0], t0[3]);
+	
+	BCDCounter time1 (enabled1, ~state[1] & ~state[0], state[1] & ~state[0], clock, t1);
+	and inst2 (enabled2, enabled1, t1[0], t1[3]);
+	
+	BCDCounter time2 (enabled2, ~state[1] & ~state[0], state[1] & ~state[0], clock, t2);
+	and inst3 (enabled3, enabled2, t2[0], t2[3]);
+	
+	BCDCounter time3 (enabled3, ~state[1] & ~state[0], state[1] & ~state[0], clock, t3);
+	
+	assign selectDisplay = state[1] & ~state[0];
+	
+	FastestTime ftime ({t3, t2, t1, t0}, CLOCK_50, ~state[1] & ~state[0], ~enabled0, {st3, st2, st1, st0});
+	
+	mux2to1 mux0 (dt0, selectDisplay, t0, st0);
+	defparam mux0.n = 4;
+	mux2to1 mux1 (dt1, selectDisplay, t1, st1);
+	defparam mux1.n = 4;
+	mux2to1 mux2 (dt2, selectDisplay, t2, st2);
+	defparam mux2.n = 4;
+	mux2to1 mux3 (dt3, selectDisplay, t3, st3);
+	defparam mux3.n = 4;
+	
+	hexToSevenSegDataflow inst4 (dt0, dig0);
+	hexToSevenSegDataflow inst5 (dt1, dig1);
+	hexToSevenSegDataflow inst6 (dt2, dig2);
+	hexToSevenSegDataflow inst7 (dt3, dig3);
+	
+	assign HEX0 = ~dig0;
+	assign HEX1 = ~dig1;
+	assign HEX2 = ~dig2;
+	assign HEX3 = ~dig3;
+	assign HEX2_DP = 1'b0;
+endmodule 
